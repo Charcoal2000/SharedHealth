@@ -1,0 +1,87 @@
+name: Build and Publish
+
+on:
+  push:
+    branches: main
+  pull_request:
+
+jobs:
+  build:
+    name: Build and create release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v1.2.0
+
+      - name: Fetch Unity Engine modules
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://files.catbox.moe/i4sdl6.zip" -OutFile "UnityModules.zip"
+          Expand-Archive -Path "UnityModules.zip" -DestinationPath "References" -Force
+
+      - name: Fetch API files
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/hk-modding/api/releases/download/1.5.78.11833-77/moddingapi.v77.windows.zip" -OutFile "API.zip"
+          Expand-Archive -Path "API.zip" -DestinationPath "References" -Force
+
+      - name: Fetch HKMP
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/Extremelyd1/HKMP/releases/download/v2.4.3/HKMP.zip" -OutFile "HKMP.zip"
+          Expand-Archive -Path "HKMP.zip" -DestinationPath "References" -Force
+
+      - name: Fetch HkmpPouch
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/PrashantMohta/HkmpPouch/releases/download/v2.0.0r/HkmpPouch.zip" -OutFile "HkmpPouch.zip"
+          Expand-Archive -Path "HkmpPouch.zip" -DestinationPath "References" -Force
+
+      - name: Restore packages
+        run: nuget restore SharedHealth.csproj
+
+      - name: Build project
+        run: msbuild SharedHealth.csproj /p:Configuration=Release
+
+      - name: Get SHA256 of zipped mod
+        id: get_hash
+        shell: powershell
+        run: |
+          $hash = (Get-FileHash "Output/SharedHealth.zip" -Algorithm SHA256).Hash
+          echo "hash=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Get Assembly version
+        id: get_version
+        shell: powershell
+        run: |
+          $version = Get-Content Version.txt -Raw
+          $version = $version.Trim()
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          release_name: Release v${{ steps.get_version.outputs.version }}
+          body: "SHA256: ${{ steps.get_hash.outputs.hash }}"
+          draft: false
+          prerelease: false
+
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: Output/SharedHealth.zip
+          asset_name: SharedHealth.zip
+          asset_content_type: application/zip
