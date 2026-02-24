@@ -1,6 +1,7 @@
 ﻿using Modding;
 using System;
 using System.Reflection;
+using GlobalEnums;
 using Hkmp.Api.Client;
 using Hkmp.Game;
 using HkmpPouch;
@@ -99,6 +100,9 @@ namespace SharedHealth
             orig(self, damageAmount);
             Log("Setting isDamageFromPipe to false in Reset");
             isDamageFromPipe = false;
+
+            Log("Playing hit sound");
+            self.GetComponent<HeroAudioController>().PlaySound(HeroSounds.TAKE_HIT);
             
             if (self.playerData.health == 0)
             {
