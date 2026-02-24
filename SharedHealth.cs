@@ -4,6 +4,7 @@ using System.Reflection;
 using Hkmp.Api.Client;
 using Hkmp.Game;
 using HkmpPouch;
+using HKMirror.Reflection.SingletonClasses;
 
 namespace SharedHealth
 {
@@ -40,21 +41,21 @@ namespace SharedHealth
         {
             pipe.OnRecieve += ReceivePipeBroadcast;
             ModHooks.AfterTakeDamageHook += SendDamageInPipe;
+            On.HeroController.TakeHealth += ResetIsDamageFromPipe;
             On.HeroController.AddHealth += SendHealthInPipe;
             On.HeroController.MaxHealth += SendBenchInPipe;
         }
 
         private void ReceivePipeBroadcast(object sender, ReceivedEventArgs e)
         {
+            Log("Received pipe for " + e.Data.EventName);
             IClientPlayer player = pipe.ClientApi.ClientManager.GetPlayer(e.Data.FromPlayer);
 
-            if (pipe.ClientApi.ClientManager.Team != player.Team)
+            if (player.Team == Team.None ||
+                pipe.ClientApi.ClientManager.Team != player.Team ||
+                pipe.ClientApi.ClientManager.Team == Team.None)
             {
-                return;
-            }
-
-            if (player.Team == Team.None)
-            {
+                Log("Ignoring pipe as either one of the player is team None or not from the same team");
                 return;
             }
             
@@ -74,7 +75,10 @@ namespace SharedHealth
 
         private void HandleDamageEvent(ReceivedEventArgs e)
         {
+            Log("Handling damage event");
             byte damage = e.Data.ExtraBytes[0];
+            Log("Applying " + damage + " damage");
+            Log("Setting isDamageFromPipe to true");
             isDamageFromPipe = true;
             
             HeroController.instance.TakeHealth(damage);
@@ -83,18 +87,41 @@ namespace SharedHealth
         private void HandleHealEvent(ReceivedEventArgs e)
         {
             byte health = e.Data.ExtraBytes[0];
-            isHealFromPipe = true;
+            
+            if (health == Byte.MaxValue) isBenchFromPipe = true;
+            else isHealFromPipe = true;
             
             HeroController.instance.AddHealth(health);
         }
+        
+        private void ResetIsDamageFromPipe(On.HeroController.orig_TakeHealth orig, HeroController self, int damageAmount)
+        {
+            orig(self, damageAmount);
+            Log("Setting isDamageFromPipe to false in Reset");
+            isDamageFromPipe = false;
+            
+            if (self.playerData.health == 0)
+            {
+                Log("No more HP. Killing");
 
+                _ = self.StartCoroutine(HeroControllerR.Die());
+            }
+        }
+        
         private int SendDamageInPipe(int hazardType, int damageAmount)
         {
-            byte[] amountDamage = [Convert.ToByte(damageAmount)];
-            
-            if (!isDamageFromPipe)
-                pipe.Broadcast(DamageEventName, DamageEventName, amountDamage, false);
+            Log("Detected damage, sending in pipe");
 
+            if (isDamageFromPipe) return damageAmount;
+            
+            byte[] amountDamage = [Convert.ToByte(damageAmount)];
+            if (HeroController.instance.playerData.overcharmed)
+                amountDamage[0] *= 2;
+            
+            Log("Sending pipe for " + amountDamage[0] + " damage");
+            pipe.Broadcast(DamageEventName, DamageEventName, amountDamage, false);
+            
+            Log("Setting isDamageFromPipe to false in Hook");
             isDamageFromPipe = false;
             
             return damageAmount;
@@ -104,10 +131,8 @@ namespace SharedHealth
         {
             orig(self, amount);
             
-            byte[] amountHealed = [ Convert.ToByte(amount) ];
-            
             if (!isHealFromPipe)
-                pipe.Broadcast(HealEventName, HealEventName, amountHealed, false);
+                pipe.Broadcast(HealEventName, HealEventName, [Convert.ToByte(amount)], false);
 
             isHealFromPipe = false;
         }

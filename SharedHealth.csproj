@@ -77,6 +77,9 @@
     <Reference Include="HkmpPouch">
       <HintPath>..\..\..\.local\share\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\Mods\HkmpPouch\HkmpPouch.dll</HintPath>
     </Reference>
+    <Reference Include="HKMirror">
+      <HintPath>..\..\..\.local\share\Steam\steamapps\common\Hollow Knight\hollow_knight_Data\Managed\Mods\HKMirror\HKMirror.dll</HintPath>
+    </Reference>
     <Reference Include="MMHOOK_Assembly-CSharp">
       <HintPath>$(LocalRefs)/MMHOOK_Assembly-CSharp.dll</HintPath>
     </Reference>
