@@ -2,10 +2,12 @@
 using System;
 using System.Reflection;
 using GlobalEnums;
+using HKMirror.Reflection.InstanceClasses;
 using Hkmp.Api.Client;
 using Hkmp.Game;
 using HkmpPouch;
 using HKMirror.Reflection.SingletonClasses;
+using UnityEngine;
 
 namespace SharedHealth
 {
@@ -35,7 +37,7 @@ namespace SharedHealth
         {
             Instance = this;
 
-            pipe.OnReady += SetupDamageAndHealHooks;   
+            pipe.OnReady += SetupDamageAndHealHooks;
 
             Log("Initialized SharedHealth");
         }
@@ -68,8 +70,10 @@ namespace SharedHealth
                     HandleDamageEvent(e);
                     break;
                 case HealEventName:
-                case BenchEventName:
                     HandleHealEvent(e);
+                    break;
+                case BenchEventName:
+                    HandleBenchEvent(e);
                     break;
                 default:
                     return;
@@ -90,11 +94,19 @@ namespace SharedHealth
         private void HandleHealEvent(ReceivedEventArgs e)
         {
             byte health = e.Data.ExtraBytes[0];
-            
-            if (health == Byte.MaxValue) isBenchFromPipe = true;
-            else isHealFromPipe = true;
-            
+            isHealFromPipe = true;
             HeroController.instance.AddHealth(health);
+        }
+
+        private void HandleBenchEvent(ReceivedEventArgs e)
+        {
+            Log("Handling bench event");
+
+            isBenchFromPipe = true;
+            isHealFromPipe = true;
+            
+            HeroController.instance.MaxHealthKeepBlue();
+            EventRegister.SendEvent("UPDATE BLUE HEALTH");
         }
         
         private void ResetIsDamageFromPipe(On.HeroController.orig_TakeHealth orig, HeroController self, int damageAmount)
@@ -103,7 +115,6 @@ namespace SharedHealth
             Log("Setting isDamageFromPipe to false in Reset");
             isDamageFromPipe = false;
 
-            Log("Playing hit sound");
             self.GetComponent<HeroAudioController>().PlaySound(HeroSounds.TAKE_HIT);
             
             if (self.playerData.health == 0)
