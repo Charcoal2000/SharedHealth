@@ -37,6 +37,12 @@ jobs:
           Invoke-WebRequest -Uri "https://github.com/Extremelyd1/HKMP/releases/download/v2.4.3/HKMP.zip" -OutFile "HKMP.zip"
           Expand-Archive -Path "HKMP.zip" -DestinationPath "References" -Force
 
+      - name: Fetch HKMirror
+        shell: powershell
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/TheMulhima/HKMirror/releases/download/v2.1.0.0/HKMirror.zip" -OutFile "HKMirror.zip"
+          Expand-Archive -Path "HKMirror.zip" -DestinationPath "References" -Force
+
       - name: Fetch HkmpPouch
         shell: powershell
         run: |

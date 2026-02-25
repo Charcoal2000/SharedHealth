@@ -21,6 +21,8 @@ namespace SharedHealth
         private bool isHealFromPipe = false;
         private bool isDamageFromPipe = false;
         private bool isBenchFromPipe = false;
+        
+        private static Loggable loggable = new SimpleLogger("SharedHealth");
 
         public SharedHealth() : base("SharedHealth") { }
 
@@ -149,6 +151,11 @@ namespace SharedHealth
                 pipe.Broadcast(BenchEventName, BenchEventName, [Byte.MaxValue], false);
 
             isBenchFromPipe = false;
+        }
+
+        private new static void Log(string str)
+        {
+            loggable.Log(str);
         }
     }
 }
