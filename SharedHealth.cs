@@ -166,7 +166,7 @@ namespace SharedHealth
 
         private new static void Log(string str)
         {
-            loggable.Log(str);
+            // loggable.Log(str);
         }
     }
 }
