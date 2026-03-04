@@ -54,13 +54,19 @@ namespace SharedHealth
         private void ReceivePipeBroadcast(object sender, ReceivedEventArgs e)
         {
             Log("Received pipe for " + e.Data.EventName);
-            IClientPlayer player = pipe.ClientApi.ClientManager.GetPlayer(e.Data.FromPlayer);
+            IClientPlayer pipePlayer = pipe.ClientApi.ClientManager.GetPlayer(e.Data.FromPlayer);
 
-            if (player.Team == Team.None ||
-                pipe.ClientApi.ClientManager.Team != player.Team ||
-                pipe.ClientApi.ClientManager.Team == Team.None)
+            PipeClient pipeClient = (PipeClient)sender;
+
+            if (pipeClient.ClientApi.ClientManager.Team == Team.None)
             {
-                Log("Ignoring pipe as either one of the player is team None or not from the same team");
+                Log("Ignoring pipe as player is in team None");
+                return;
+            }
+
+            if (pipePlayer.Team != pipe.ClientApi.ClientManager.Team)
+            {
+                Log("Ignoring pipe as player is not in the same team");
                 return;
             }
             
@@ -93,8 +99,11 @@ namespace SharedHealth
 
         private void HandleHealEvent(ReceivedEventArgs e)
         {
+            Log("Start Heal Event Handling");
             byte health = e.Data.ExtraBytes[0];
+            Log("Setting isHealFromPipe to true");
             isHealFromPipe = true;
+            Log("Adding " + health + " health");
             HeroController.instance.AddHealth(health);
         }
 
@@ -103,7 +112,6 @@ namespace SharedHealth
             Log("Handling bench event");
 
             isBenchFromPipe = true;
-            isHealFromPipe = true;
             
             HeroController.instance.MaxHealthKeepBlue();
             EventRegister.SendEvent("UPDATE BLUE HEALTH");
@@ -149,8 +157,12 @@ namespace SharedHealth
             orig(self, amount);
             
             if (!isHealFromPipe)
+            {
+                Log("Heal not from pipe. Broadcast sent");
                 pipe.Broadcast(HealEventName, HealEventName, [Convert.ToByte(amount)], false);
+            } else Log("Heal from pipe. No broadcast");
 
+            Log("Setting isHealFromPipe to false");
             isHealFromPipe = false;
         }
 
@@ -166,7 +178,7 @@ namespace SharedHealth
 
         private new static void Log(string str)
         {
-            // loggable.Log(str);
+            loggable.Log(str);
         }
     }
 }
